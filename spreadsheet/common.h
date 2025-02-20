@@ -10,6 +10,9 @@
 
 using namespace std::literals;
 
+inline constexpr char FORMULA_SIGN = '=';
+inline constexpr char ESCAPE_SIGN = '\'';
+
 // Позиция ячейки. Индексация с нуля.
 struct Position {
     int row = 0;
@@ -126,9 +129,6 @@ public:
     // ячеек. В случае текстовой ячейки список пуст.
     virtual std::vector<Position> GetReferencedCells() const = 0;
 };
-
-inline constexpr char FORMULA_SIGN = '=';
-inline constexpr char ESCAPE_SIGN = '\'';
 
 // Интерфейс таблицы
 class SheetInterface {

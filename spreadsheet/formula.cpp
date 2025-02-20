@@ -27,19 +27,26 @@ public:
     Value Evaluate(const SheetInterface& sheet) const override {
 
         const std::function<double(Position)> evaluating_func = [&sheet](const Position pos)->double {
+
             if (!pos.IsValid()) {
                 throw FormulaError(FormulaError::Category::Ref);
             }
+
             const CellInterface* cell = sheet.GetCell(pos);
+
             if (cell == nullptr) {
                 return 0;
             }
+
             CellInterface::Value value = cell->GetValue();
+
             if (std::holds_alternative<std::string>(value)) {
                 std::string string_value = std::get<std::string>(value);
+
                 if (string_value.empty()){
                     return 0;
                 }
+
                 double double_value;
                 size_t it;
                 try {
@@ -47,9 +54,11 @@ public:
                 } catch (...) {
                     throw FormulaError(FormulaError::Category::Value);
                 }
+
                 if (it <  string_value.length()){
                     throw FormulaError(FormulaError::Category::Value);
                 }
+                
                 return double_value;
             }
             return std::get<double>(value);

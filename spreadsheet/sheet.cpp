@@ -36,7 +36,7 @@ const CellInterface* Sheet::GetCell(Position pos) const {
     if (!pos.IsValid()){
         throw InvalidPositionException("Invalid Position!"s);
     }
-    if (pos.row < static_cast<int>(sheet_.size()) && pos.col < static_cast<int>(sheet_[pos.row].size())) {
+    if (CellIsInitialised(pos)) {
         return sheet_[pos.row][pos.col].get();
     }
     return nullptr;
@@ -46,7 +46,7 @@ CellInterface* Sheet::GetCell(Position pos) {
     if (!pos.IsValid()){
         throw InvalidPositionException("Invalid Position!"s);
     }
-    if (pos.row < static_cast<int>(sheet_.size()) && pos.col < static_cast<int>(sheet_[pos.row].size())) {
+    if (CellIsInitialised(pos)) {
         return sheet_[pos.row][pos.col].get();
     }
     return nullptr;
@@ -56,7 +56,7 @@ void Sheet::ClearCell(Position pos) {
     if (!pos.IsValid()){
         throw InvalidPositionException("Invalid Position!"s);
     }
-    if (pos.row < static_cast<int>(sheet_.size()) && pos.col < static_cast<int>(sheet_[pos.row].size())) {
+    if (CellIsInitialised(pos)) {
         if(GetConcreteCell(pos) != nullptr && GetConcreteCell(pos)->IsChildren()) {
             sheet_[pos.row][pos.col]->Clear();
         } else {
@@ -90,7 +90,7 @@ std::ostream& operator<<(std::ostream& ost, const CellInterface::Value& value) {
     return ost;
 }
 
-void Sheet::Print(std::ostream& output, bool is_value) const {
+void Sheet::Print(std::ostream& output, std::function<CellInterface::Value(const CellInterface* cell)> cell_handler) const {
     Size size = GetPrintableSize();
     for (int row = 0; row < std::min(size.rows, static_cast<int>(sheet_.size())); ++row){
         for (int col = 0; col < size.cols; ++col) {
@@ -98,11 +98,7 @@ void Sheet::Print(std::ostream& output, bool is_value) const {
                 output << '\t';
             }
             if (col < static_cast<int>(sheet_.at(row).size()) && sheet_.at(row).at(col) != nullptr){
-                if (is_value) {
-                    output << sheet_.at(row).at(col)->GetValue();
-                } else {
-                    output << sheet_.at(row).at(col)->GetText();
-                }
+                output << cell_handler(this->GetCell({row, col}));
             }
         }
         output << '\n';
@@ -110,18 +106,18 @@ void Sheet::Print(std::ostream& output, bool is_value) const {
 }
 
 void Sheet::PrintValues(std::ostream& output) const {
-    Print(output, true);
+    Print(output, [] (const CellInterface* cell){ return cell->GetValue(); });
 }
 
 void Sheet::PrintTexts(std::ostream& output) const {
-    Print(output, false);
+    Print(output, [](const CellInterface* cell){ return cell->GetText(); });
 }
 
 const Cell* Sheet::GetConcreteCell(Position pos) const {
     if (!pos.IsValid()){
         throw InvalidPositionException("Invalid Position!"s);
     }
-    if (pos.row < static_cast<int>(sheet_.size()) && pos.col < static_cast<int>(sheet_[pos.row].size())) {
+    if (CellIsInitialised(pos)) {
         return sheet_[pos.row][pos.col] == nullptr ? nullptr : sheet_[pos.row][pos.col].get();
     }
     return nullptr;
@@ -131,13 +127,16 @@ Cell* Sheet::GetConcreteCell(Position pos) {
     if (!pos.IsValid()){
         throw InvalidPositionException("Invalid Position!"s);
     }
-    if (pos.row < static_cast<int>(sheet_.size()) && pos.col < static_cast<int>(sheet_[pos.row].size())) {
+    if (CellIsInitialised(pos)) {
         return sheet_[pos.row][pos.col] == nullptr ? nullptr : sheet_[pos.row][pos.col].get();
     }
     return nullptr;
 }
 
-
 std::unique_ptr<SheetInterface> CreateSheet() {
     return std::make_unique<Sheet>();
+}
+
+bool Sheet::CellIsInitialised(Position pos) const {
+    return pos.row < static_cast<int>(sheet_.size()) && pos.col < static_cast<int>(sheet_[pos.row].size());
 }

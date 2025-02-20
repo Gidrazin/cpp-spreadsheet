@@ -16,16 +16,37 @@ Cell::Cell(Sheet& sheet)
 
 Cell::~Cell() = default;
 
+struct CellCurrentStateBackup {
+    //Структура для хранения текущего состояния ячейки
+    CellCurrentStateBackup(std::unordered_set<Cell*>& children_cells,
+                           std::optional<CellInterface::Value> cache,
+                           std::vector<Position>& referenced_cells)
+    : temp_children_cells(std::move(children_cells))
+    , temp_cache(cache)
+    , temp_referenced_cells(std::move(referenced_cells))
+    {}
+
+    std::unordered_set<Cell*> temp_children_cells;
+    std::optional<CellInterface::Value> temp_cache;
+    std::vector<Position> temp_referenced_cells;
+
+    void RestoreFromBackup(std::unordered_set<Cell*>& children_cells,
+                 std::optional<CellInterface::Value>& cache,
+                 std::vector<Position>& referenced_cells) {
+        children_cells = std::move(temp_children_cells);
+        cache = temp_cache;
+        referenced_cells = std::move(temp_referenced_cells);
+    }
+};
+
 void Cell::Set(std::string text) {
     if (text.empty()) {
         Clear();
         return;
     }
     if (text.at(0) == '=' && text.size() > 1){
-        //бэкап текущего состояния полей 
-        auto temp_children_cells = std::move(children_cells_);
-        auto temp_cache = cache_;
-        auto temp_referenced_cells = std::move(referenced_cells_);
+
+        CellCurrentStateBackup backup(children_cells_, cache_, referenced_cells_);
 
         auto temp_impl = std::make_unique<FormulaImpl>(this, text);
 
@@ -37,12 +58,10 @@ void Cell::Set(std::string text) {
         }
 
         if (HasCycle()) {
-            children_cells_ = std::move(temp_children_cells);
-            cache_ = temp_cache;
-            referenced_cells_ = std::move(temp_referenced_cells);
+            backup.RestoreFromBackup(children_cells_, cache_, referenced_cells_);
             throw CircularDependencyException("Circular!");
         } else {
-            for (Cell* cell : temp_children_cells) {
+            for (Cell* cell : backup.temp_children_cells) {
                 auto it = cell->parent_cells_.find(this);
                 if (it != cell->parent_cells_.end()){
                     cell->parent_cells_.erase(it);

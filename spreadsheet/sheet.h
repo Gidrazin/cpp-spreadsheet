@@ -28,5 +28,6 @@ public:
 
 private:
     std::vector<std::vector<std::unique_ptr<Cell>>> sheet_;
-    void Print(std::ostream& output, bool is_value) const;
+    void Print(std::ostream& output, std::function<CellInterface::Value(const CellInterface* cell)> cell_handler) const;
+    bool CellIsInitialised (Position pos) const;
 };
